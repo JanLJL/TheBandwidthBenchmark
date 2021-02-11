@@ -61,12 +61,15 @@
 typedef enum benchmark {
     INIT = 0,
     SUM,
+    SUM_NT,
     COPY,
     UPDATE,
     TRIAD,
     DAXPY,
     STRIAD,
     SDAXPY,
+    SUM1ST,
+    SUMMST,
     NUMBENCH
 } benchmark;
 
@@ -78,12 +81,15 @@ typedef struct {
 
 extern double init(double*, double, int);
 extern double sum(double*, int);
+extern double sumNT(double*, int);
 extern double copy(double*, double*, int);
 extern double update(double*, double, int);
 extern double triad(double*, double*, double*, double, int);
 extern double daxpy(double*, double*, double, int);
 extern double striad(double*, double*, double*, double*, int);
 extern double sdaxpy(double*, double*, double*, int);
+extern double sum1start(double*, int);
+extern double sumMstart(double*, int);
 
 void check(double*, double*, double*, double*, int);
 
@@ -100,16 +106,20 @@ int main (int argc, char** argv)
     mintime[NUMBENCH];
 
     double times[NUMBENCH][NTIMES];
+    int threads = omp_get_max_threads();
 
     benchmarkType benchmarks[NUMBENCH] = {
         {"Init:       ", 1, 0},
         {"Sum:        ", 1, 1},
+        {"Sum NT:     ", 1, 1},
         {"Copy:       ", 2, 0},
         {"Update:     ", 2, 1},
         {"Triad:      ", 3, 2},
         {"Daxpy:      ", 3, 2},
         {"STriad:     ", 4, 2},
-        {"SDaxpy:     ", 4, 2}
+        {"SDaxpy:     ", 4, 2},
+        {"Sum1start:  ", 1*threads, 1*threads},
+        {"SumMstart:  ", 1*threads, 1*threads}
     };
 
     LIKWID_MARKER_INIT;
@@ -117,12 +127,15 @@ int main (int argc, char** argv)
     {
         LIKWID_MARKER_REGISTER("INIT");
         LIKWID_MARKER_REGISTER("SUM");
+        LIKWID_MARKER_REGISTER("SUM_NT");
         LIKWID_MARKER_REGISTER("COPY");
         LIKWID_MARKER_REGISTER("UPDATE");
         LIKWID_MARKER_REGISTER("TRIAD");
         LIKWID_MARKER_REGISTER("DAXPY");
         LIKWID_MARKER_REGISTER("STRIAD");
         LIKWID_MARKER_REGISTER("SDAXPY");
+        LIKWID_MARKER_REGISTER("SUM1ST");
+        LIKWID_MARKER_REGISTER("SUMMST");
     }
 
     a = (double*) allocate( ARRAY_ALIGNMENT, N * bytesPerWord );
@@ -179,12 +192,21 @@ int main (int argc, char** argv)
         tmp = a[10];
         LIKWID_PROFILE(SUM,sum(a, N));
         a[10] = tmp;
+        tmp = a[10];
+        LIKWID_PROFILE(SUM_NT,sumNT(a, N));
+        a[10] = tmp;
         LIKWID_PROFILE(COPY,copy(c, a, N));
         LIKWID_PROFILE(UPDATE,update(a, scalar, N));
         LIKWID_PROFILE(TRIAD,triad(a, b, c, scalar, N));
         LIKWID_PROFILE(DAXPY,daxpy(a, b, scalar, N));
         LIKWID_PROFILE(STRIAD,striad(a, b, c, d, N));
         LIKWID_PROFILE(SDAXPY,sdaxpy(a, b, c, N));
+        tmp = a[10];
+        LIKWID_PROFILE(SUM1ST,sum1start(a, N));
+        a[10] = tmp;
+        tmp = a[10];
+        LIKWID_PROFILE(SUMMST,sumMstart(a, N));
+        a[10] = tmp;
     }
 
     for (int j=0; j<NUMBENCH; j++) {

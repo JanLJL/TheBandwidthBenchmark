@@ -7,7 +7,7 @@ OPENMP   = -qopenmp
 endif
 
 VERSION  = --version
-CFLAGS   =  -fast -xHost -qopt-streaming-stores=always -std=c99 -ffreestanding $(OPENMP)
+CFLAGS   =  -fast -xHost -xCORE-AVX512 -qopt-zmm-usage=high -qopt-streaming-stores=always -std=c99 -ffreestanding $(OPENMP)
 LFLAGS   = $(OPENMP)
 DEFINES  = -D_GNU_SOURCE
 INCLUDES =

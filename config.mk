@@ -1,7 +1,7 @@
 # Supported: GCC, CLANG, ICC
 TAG ?= ICC
 ENABLE_OPENMP ?= true
-ENABLE_LIKWID ?= false
+ENABLE_LIKWID ?= true
 
 #Feature options
 OPTIONS  =  -DSIZE=120000000ull

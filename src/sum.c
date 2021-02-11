@@ -25,6 +25,7 @@
  * =======================================================================================
  */
 #include <timing.h>
+#include <immintrin.h>
 
 double sum(
         double * restrict a,
@@ -38,6 +39,28 @@ double sum(
 #pragma omp parallel for reduction(+:sum) schedule(static)
     for (int i=0; i<N; i++) {
         sum += a[i];
+    }
+    E = getTimeStamp();
+
+    /* make the compiler think this makes actually sense */
+    a[10] = sum;
+
+    return E-S;
+}
+
+double sumNT(
+        double * restrict a,
+        int N
+        )
+{
+    double S, E;
+    double sum = 0.0;
+
+    S = getTimeStamp();
+#pragma omp parallel for reduction(+:sum) schedule(static)
+    for (int i=0; i<N; i+=8) {
+        __m512i lvec = _mm512_stream_load_si512 (&a[i]);
+        sum += _mm512_reduce_add_epi64(lvec);
     }
     E = getTimeStamp();
 
