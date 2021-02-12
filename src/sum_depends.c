@@ -1,6 +1,7 @@
 #include <timing.h>
 #include <omp.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <immintrin.h>
 
 double sumBdepOnVal(

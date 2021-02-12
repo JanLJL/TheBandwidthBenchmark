@@ -43,7 +43,7 @@ if (not defined $UNIT) {
 
 my %RES;
 
-my @testcases = ('Init', 'Sum', 'Sum_NTLD', 'Copy', 'Update', 'Triad',  'Daxpy', 'STriad', 'SDaxpy', 'Sum1start', 'SumMstart', 'SumBdepVal', 'SumBVal64');
+my @testcases = ('Init', 'Sum', 'Sum_NTLD', 'Copy', 'Update', 'Triad',  'Daxpy', 'STriad', 'SDaxpy', 'Sum1start', 'SumMstart', 'SumBVal', 'SumBVal64');
 
 while( defined( my $file = glob($DIR . '/*' ) ) ) {
 
