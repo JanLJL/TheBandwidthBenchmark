@@ -70,6 +70,8 @@ typedef enum benchmark {
     SDAXPY,
     SUM1ST,
     SUMMST,
+    SUMBDOV,
+    SUMBDOV64,
     NUMBENCH
 } benchmark;
 
@@ -90,6 +92,8 @@ extern double striad(double*, double*, double*, double*, int);
 extern double sdaxpy(double*, double*, double*, int);
 extern double sum1start(double*, int);
 extern double sumMstart(double*, int);
+extern double sumBdepOnVal(uint64_t*, double*, int);
+extern double sumBdepOnVal64(uint64_t*, double*, int);
 
 void check(double*, double*, double*, double*, int);
 
@@ -98,6 +102,7 @@ int main (int argc, char** argv)
     size_t bytesPerWord = sizeof(double);
     size_t N = SIZE;
     double *a, *b, *c, *d;
+    uint64_t *ai, *bi, *ci, *di;
     double scalar, tmp;
     double E, S;
 
@@ -111,7 +116,7 @@ int main (int argc, char** argv)
     benchmarkType benchmarks[NUMBENCH] = {
         {"Init:       ", 1, 0},
         {"Sum:        ", 1, 1},
-        {"Sum NT:     ", 1, 1},
+        {"Sum_NTLD:   ", 1, 1},
         {"Copy:       ", 2, 0},
         {"Update:     ", 2, 1},
         {"Triad:      ", 3, 2},
@@ -119,7 +124,9 @@ int main (int argc, char** argv)
         {"STriad:     ", 4, 2},
         {"SDaxpy:     ", 4, 2},
         {"Sum1start:  ", 1*threads, 1*threads},
-        {"SumMstart:  ", 1*threads, 1*threads}
+        {"SumMstart:  ", 1*threads, 1*threads},
+        {"SumBVal:    ", 2*(threads), 1},
+        {"SumBVal64:  ", 1*(threads+64), 64}
     };
 
     LIKWID_MARKER_INIT;
@@ -136,15 +143,18 @@ int main (int argc, char** argv)
         LIKWID_MARKER_REGISTER("SDAXPY");
         LIKWID_MARKER_REGISTER("SUM1ST");
         LIKWID_MARKER_REGISTER("SUMMST");
+        LIKWID_MARKER_REGISTER("SUMBDOV");
+        LIKWID_MARKER_REGISTER("SUMBDOV64");
     }
 
-    a = (double*) allocate( ARRAY_ALIGNMENT, N * bytesPerWord );
-    b = (double*) allocate( ARRAY_ALIGNMENT, N * bytesPerWord );
-    c = (double*) allocate( ARRAY_ALIGNMENT, N * bytesPerWord );
-    d = (double*) allocate( ARRAY_ALIGNMENT, N * bytesPerWord );
+    a  = (double*)   allocate( ARRAY_ALIGNMENT, N * bytesPerWord );
+    ai = (uint64_t*) allocate( ARRAY_ALIGNMENT, N * bytesPerWord );
+    b  = (double*)   allocate( ARRAY_ALIGNMENT, N * bytesPerWord );
+    c  = (double*)   allocate( ARRAY_ALIGNMENT, N * bytesPerWord );
+    d  = (double*)   allocate( ARRAY_ALIGNMENT, N * bytesPerWord );
 
     printf(HLINE);
-    printf ("Total allocated datasize: %8.2f MB\n", 4.0 * bytesPerWord * N * 1.0E-06);
+    printf ("Total allocated datasize: %8.2f MB\n", 5.0 * bytesPerWord * N * 1.0E-06);
 
     for (int i=0; i<NUMBENCH; i++) {
 #ifdef VERBOSE_DATASIZE
@@ -175,6 +185,7 @@ int main (int argc, char** argv)
 #pragma omp parallel for schedule(static)
     for (int i=0; i<N; i++) {
         a[i] = 2.0;
+        ai[i] = (uint64_t) (i/8);
         b[i] = 2.0;
         c[i] = 0.5;
         d[i] = 1.0;
@@ -188,12 +199,12 @@ int main (int argc, char** argv)
     scalar = 3.0;
 
     for ( int k=0; k < NTIMES; k++) {
-        LIKWID_PROFILE(INIT,init(b, scalar, N));
+        LIKWID_PROFILE(INIT,init(a, scalar, N));
         tmp = a[10];
         LIKWID_PROFILE(SUM,sum(a, N));
-        a[10] = tmp;
-        tmp = a[10];
         LIKWID_PROFILE(SUM_NT,sumNT(a, N));
+        LIKWID_PROFILE(SUM1ST,sum1start(a, N));
+        LIKWID_PROFILE(SUMMST,sumMstart(a, N));
         a[10] = tmp;
         LIKWID_PROFILE(COPY,copy(c, a, N));
         LIKWID_PROFILE(UPDATE,update(a, scalar, N));
@@ -201,12 +212,11 @@ int main (int argc, char** argv)
         LIKWID_PROFILE(DAXPY,daxpy(a, b, scalar, N));
         LIKWID_PROFILE(STRIAD,striad(a, b, c, d, N));
         LIKWID_PROFILE(SDAXPY,sdaxpy(a, b, c, N));
-        tmp = a[10];
-        LIKWID_PROFILE(SUM1ST,sum1start(a, N));
-        a[10] = tmp;
-        tmp = a[10];
-        LIKWID_PROFILE(SUMMST,sumMstart(a, N));
-        a[10] = tmp;
+        tmp = ai[10];
+        LIKWID_PROFILE(SUMBDOV,sumBdepOnVal(ai, b, N));
+        ai[10] = tmp;
+        LIKWID_PROFILE(SUMBDOV64,sumBdepOnVal64(ai, b, N));
+        ai[10] = tmp;
     }
 
     for (int j=0; j<NUMBENCH; j++) {
@@ -269,7 +279,7 @@ void check(
     scalar = 3.0;
 
     for (int k=0; k<NTIMES; k++) {
-        bj = scalar;
+        aj = scalar;
         cj = aj;
         aj = aj * scalar;
         aj = bj + scalar * cj;
